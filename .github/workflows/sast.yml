@@ -34,3 +34,4 @@ jobs:
             echo "::error ::Foram encontradas vulnerabilidades High/Critical. Corrija antes do deploy."
             exit 1
           fi
+
