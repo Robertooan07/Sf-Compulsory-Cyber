@@ -1,0 +1,36 @@
+name: SAST - Semgrep
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Semgrep
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install semgrep
+
+      - name: Rodar Semgrep no código Java
+        run: |
+          semgrep ci --config p/java --json -o semgrep-results.json || true
+
+      - name: Upload do relatório
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+
+      - name: Bloquear se houver vulnerabilidades críticas
+        run: |
+          COUNT=$(jq '[.results[] | select(((.severity // .extra.severity) | ascii_downcase) == "high" or ((.severity // .extra.severity) | ascii_downcase) == "critical")] | length' semgrep-results.json)
+          echo "Achados High/Critical: $COUNT"
+          if [ "$COUNT" -gt 0 ]; then
+            echo "::error ::Foram encontradas vulnerabilidades High/Critical. Corrija antes do deploy."
+            exit 1
+          fi

@@ -1,0 +1,15 @@
+rules:
+  - id: java-sql-injection
+    pattern: |
+      Statement stmt = $DB.createStatement();
+      stmt.executeQuery($QUERY);
+    message: "Possível SQL Injection: use PreparedStatement."
+    severity: ERROR
+    languages: [java]
+
+  - id: java-hardcoded-password
+    pattern: |
+      String password = "$VAL";
+    message: "Senha hardcoded detectada. Use variáveis de ambiente/secret manager."
+    severity: WARNING
+    languages: [java]
