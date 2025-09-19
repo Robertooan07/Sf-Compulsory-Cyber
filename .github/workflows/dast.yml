@@ -64,7 +64,6 @@ jobs:
             nikto-report.txt
             headers.txt
 
-
       - name: Tear down Docker container
         if: ${{ always() }}
         run: |
