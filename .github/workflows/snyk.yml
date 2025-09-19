@@ -1,4 +1,4 @@
-name: Snyk SCA Test
+name: Snyk Test
 
 on:
   push:
@@ -11,42 +11,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      - name: Ensure Maven Wrapper
-        run: |
-          if [ ! -f ./mvnw ]; then
-            mvn -N io.takari:maven:wrapper
-          fi
-        shell: bash
+      - name: Install dependencies
+        run: npm install
 
       - name: Install Snyk
         run: npm install -g snyk
 
-      - name: Authenticate Snyk
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}
-
-      - name: Build project
-        run: ./mvnw clean install
-
       - name: Run Snyk test
         run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json
-        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Upload Snyk report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: snyk-report
           path: snyk-report.json
