@@ -1,4 +1,4 @@
-name: DAST - unauthenticated
+name: SCA - Análise de Dependências
 
 on:
   push:
@@ -9,53 +9,37 @@ on:
       - main
 
 jobs:
-  dast:
+  snyk-sca:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nikto curl
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '17'
 
-      - name: Build Docker image
-        run: docker build -t minha-app:latest .
+      - name: Set up Maven Wrapper
+        run: chmod +x ./mvnw
 
-      - name: Run Docker container
-        run: |
-          docker run -d --name minha-app-container -p 8080:8080 minha-app:latest
-          sleep 20
+      - name: Run Snyk to check dependencies
+        uses: snyk/actions/maven@master
+        with:
+          command: test
+          args: --all-projects --severity-threshold=low --json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      - name: Wait for app to be ready
-        run: |
-          for i in {1..30}; do
-            if curl -s http://localhost:8080 > /dev/null; then
-              echo "App is ready"
-              break
-            fi
-            echo "Waiting..."
-            sleep 2
-          done
+      - name: Save Snyk report
+        run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run Nikto scan
-        run: nikto -h http://localhost:8080 -output nikto-report.txt
-
-      - name: Collect HTTP headers
-        run: curl -I http://localhost:8080 > headers.txt
-
-      - name: Stop Docker container
-        run: docker stop minha-app-container
-
-      - name: Upload Nikto report
+      - name: Upload Snyk JSON report
         uses: actions/upload-artifact@v4
         with:
-          name: nikto-report
-          path: nikto-report.txt
-
-      - name: Upload headers
-        uses: actions/upload-artifact@v4
-        with:
-          name: headers
-          path: headers.txt
+          name: snyk-report
+          path: snyk-report.json
