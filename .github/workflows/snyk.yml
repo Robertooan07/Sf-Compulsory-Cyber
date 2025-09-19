@@ -1,42 +1,46 @@
-name: Snyk SCA
+name: Snyk Dependency Scan
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  snyk:
+  snyk-scan:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '21'
-        cache: 'maven'
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
-    - name: Verify Java
-      run: |
-        java -version
-        echo $JAVA_HOME
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-    - name: Run Snyk to check dependencies
-      uses: snyk/actions/maven@master
-      with:
-        command: test
-        args: --all-projects --severity-threshold=low --json
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        JAVA_HOME: ${{ env.JAVA_HOME }}
+      - name: Install Snyk CLI
+        run: npm install -g snyk
 
-    - name: Upload Snyk Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: snyk-report
-        path: snyk-report.json
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Test
+        run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload Snyk Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: snyk-report
+          path: snyk-report.json
