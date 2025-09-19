@@ -23,7 +23,7 @@ jobs:
       - name: Wait for app to be ready
         run: |
           for i in {1..30}; do
-            if curl -sSf http://localhost:8080/health >/dev/null 2>&1; then
+            if curl -sSf http://localhost:8080/ >/dev/null 2>&1; then
               echo "App up"; exit 0
             fi
             echo "waiting... ($i)"
@@ -37,7 +37,7 @@ jobs:
       - name: Run ZAP authenticated scan
         run: |
           zap-baseline.py \
-            -t http://localhost:8080/health \
+            -t http://localhost:8080/ \
             -r zap-report.html \
             -J zap-report.json \
             -u 'http://localhost:8080/login' \
@@ -49,12 +49,12 @@ jobs:
 
       - name: Run Nikto scan
         run: |
-          nikto -h http://localhost:8080/health -output nikto-report.txt || true
+          nikto -h http://localhost:8080/ -output nikto-report.txt || true
 
       - name: Check security headers (curl)
         run: |
-          echo "=== Security headers for /health ===" > headers.txt
-          curl -sI http://localhost:8080/health >> headers.txt || true
+          echo "=== Security headers for / ===" > headers.txt
+          curl -sI http://localhost:8080/ >> headers.txt || true
 
       - name: Upload reports
         uses: actions/upload-artifact@v4
