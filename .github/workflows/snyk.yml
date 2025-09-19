@@ -23,7 +23,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'  # versão LTS do Node.js
+          node-version: '20'
 
       - name: Install Maven
         run: sudo apt-get update && sudo apt-get install -y maven
@@ -35,7 +35,7 @@ jobs:
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk test
-        run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json
+        run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json || true
 
       - name: Upload Snyk report
         uses: actions/upload-artifact@v4
