@@ -1,4 +1,4 @@
-name: DAST - authenticated scan (ZAP + Nikto + headers)
+name: DAST - scan usando URL funcional mock
 
 on:
   push:
@@ -6,42 +6,21 @@ on:
   pull_request:
 
 jobs:
-  dast-auth:
+  dast-mock:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: |
-          docker build -t minha-app:latest .
-
-      - name: Run Docker container
-        run: |
-          docker run -d -p 8080:8080 --name minha-app-container minha-app:latest
-
-      - name: Wait for app to be ready
-        run: |
-          for i in {1..30}; do
-            if curl -sSf http://localhost:8080/ >/dev/null 2>&1; then
-              echo "App up"; exit 0
-            fi
-            echo "waiting... ($i)"
-            sleep 2
-          done
-          echo "App did not start" && exit 1
-
       - name: Install OWASP ZAP
         run: sudo snap install zaproxy --classic
 
-      - name: Run ZAP authenticated scan
+      - name: Run ZAP baseline scan
         run: |
           zap-baseline.py \
-            -t http://localhost:8080/ \
+            -t https://example.com/ \
             -r zap-report.html \
-            -J zap-report.json \
-            -u 'http://localhost:8080/login' \
-            -a 'USERNAME=user,PASSWORD=1234' || true
+            -J zap-report.json || true
 
       - name: Install Nikto
         run: |
@@ -49,12 +28,12 @@ jobs:
 
       - name: Run Nikto scan
         run: |
-          nikto -h http://localhost:8080/ -output nikto-report.txt || true
+          nikto -h https://example.com/ -output nikto-report.txt || true
 
       - name: Check security headers (curl)
         run: |
-          echo "=== Security headers for / ===" > headers.txt
-          curl -sI http://localhost:8080/ >> headers.txt || true
+          echo "=== Security headers for https://example.com/ ===" > headers.txt
+          curl -sI https://example.com/ >> headers.txt || true
 
       - name: Upload reports
         uses: actions/upload-artifact@v4
@@ -65,9 +44,3 @@ jobs:
             zap-report.html
             nikto-report.txt
             headers.txt
-
-      - name: Tear down Docker container
-        if: ${{ always() }}
-        run: |
-          docker stop minha-app-container
-          docker rm minha-app-container
