@@ -9,6 +9,7 @@ on:
 jobs:
   snyk:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,7 +20,20 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Run Snyk to check dependencies
-        uses: snyk/actions/maven@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Install Maven
+        run: sudo apt-get install maven -y
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk test
+        run: snyk test --all-projects --severity-threshold=low
+
+      - name: Upload Snyk report
+        uses: actions/upload-artifact@v3
+        with:
+          name: snyk-report
+          path: snyk-report.json
