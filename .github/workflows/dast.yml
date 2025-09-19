@@ -8,23 +8,20 @@ on:
 jobs:
   dast-unauth:
     runs-on: ubuntu-latest
-    services:
-      # opcional: rode um DB se precisar; se você já tem docker-compose, substitua por step que sobe o compose
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Start application (docker-compose staging) - optional
         if: ${{ always() }}
         run: |
-          # Se você tem docker-compose.staging.yml no repo, descomente abaixo:
-          # docker-compose -f docker-compose.staging.yml up -d
-          echo "Assumindo app já disponível em http://localhost:8080 ou adapt to your start command"
+          echo "Assumindo app já disponível em http://localhost:8080 ou adapte seu comando"
 
       - name: Wait for app to be ready
         run: |
           for i in {1..30}; do
             if curl -sSf http://localhost:8080/ >/dev/null 2>&1; then
-              echo "app up"; exit 0
+              echo "App up"; exit 0
             fi
             echo "waiting... ($i)"
             sleep 2
@@ -36,7 +33,6 @@ jobs:
 
       - name: Run ZAP baseline (unauthenticated)
         run: |
-          # Baseline scan (non-authenticated) - gera HTML e JSON
           zap-baseline.py -t http://localhost:8080 -r zap-report.html -J zap-report.json || true
 
       - name: Install Nikto
@@ -68,5 +64,4 @@ jobs:
       - name: Tear down staging (if used)
         if: ${{ always() }}
         run: |
-          # docker-compose -f docker-compose.staging.yml down || true
           echo "done"
