@@ -12,10 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start application (docker-compose staging) - optional
-        if: ${{ always() }}
+      - name: Build Docker image
         run: |
-          echo "Assumindo app já disponível em http://localhost:8080 ou adapte seu comando"
+          docker build -t minha-app:latest .
+
+      - name: Run Docker container
+        run: |
+          docker run -d -p 8080:8080 --name minha-app-container minha-app:latest
 
       - name: Wait for app to be ready
         run: |
@@ -39,7 +42,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y nikto
 
-      - name: Run Nikto scan (unauthenticated)
+      - name: Run Nikto scan
         run: |
           nikto -h http://localhost:8080 -output nikto-report.txt || true
 
@@ -61,7 +64,9 @@ jobs:
             nikto-report.txt
             headers.txt
 
-      - name: Tear down staging (if used)
+
+      - name: Tear down Docker container
         if: ${{ always() }}
         run: |
-          echo "done"
+          docker stop minha-app-container
+          docker rm minha-app-container
