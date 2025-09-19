@@ -19,19 +19,24 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '21'
+        cache: 'maven'
 
-    - name: Set up Maven
-      run: mvn -v
+    - name: Verify Java
+      run: |
+        java -version
+        echo $JAVA_HOME
 
     - name: Run Snyk to check dependencies
       uses: snyk/actions/maven@master
       with:
-        args: test --all-projects --severity-threshold=low --json > snyk-report.json
+        command: test
+        args: --all-projects --severity-threshold=low --json
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        JAVA_HOME: ${{ env.JAVA_HOME }}
 
     - name: Upload Snyk Report
       uses: actions/upload-artifact@v4
       with:
         name: snyk-report
-        path: ./snyk-report.json
+        path: snyk-report.json
