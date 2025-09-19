@@ -1,10 +1,10 @@
-name: Snyk SCA Scan
+name: SCA - Snyk Scan
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   snyk:
@@ -19,6 +19,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: maven
 
       - name: Install Snyk CLI
         run: npm install -g snyk
@@ -27,10 +28,11 @@ jobs:
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk test
+        working-directory: ./Sf-Compulsory-Cyber
         run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json || true
 
-      - name: Upload Snyk report
-        uses: actions/upload-artifact@v4
+      - name: Upload Snyk Report
+        uses: actions/upload-artifact@v3
         with:
           name: snyk-report
-          path: snyk-report.json
+          path: ./Sf-Compulsory-Cyber/snyk-report.json
