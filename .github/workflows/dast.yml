@@ -1,4 +1,4 @@
-name: DAST - unauthenticated scans (ZAP + Nikto + headers)
+name: DAST - authenticated scan (ZAP + Nikto + headers)
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  dast-unauth:
+  dast-auth:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,9 +34,14 @@ jobs:
       - name: Install OWASP ZAP
         run: sudo snap install zaproxy --classic
 
-      - name: Run ZAP baseline (unauthenticated)
+      - name: Run ZAP authenticated scan
         run: |
-          zap-baseline.py -t http://localhost:8080 -r zap-report.html -J zap-report.json || true
+          zap-baseline.py \
+            -t http://localhost:8080 \
+            -r zap-report.html \
+            -J zap-report.json \
+            -u 'http://localhost:8080/login' \
+            -a 'USERNAME=<seu_usuario>,PASSWORD=<sua_senha>' || true
 
       - name: Install Nikto
         run: |
