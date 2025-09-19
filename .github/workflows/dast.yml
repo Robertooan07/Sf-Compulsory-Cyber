@@ -41,7 +41,7 @@ jobs:
             -r zap-report.html \
             -J zap-report.json \
             -u 'http://localhost:8080/login' \
-            -a 'USERNAME=<seu_usuario>,PASSWORD=<sua_senha>' || true
+            -a 'USERNAME=user,PASSWORD=1234' || true
 
       - name: Install Nikto
         run: |
