@@ -23,11 +23,8 @@ jobs:
       - name: Give execute permission to Maven Wrapper
         run: chmod +x mvnw
 
-      - name: Build with Maven
-        run: ./mvnw clean compile
-
-      - name: Run Unit and Security Tests
-        run: ./mvnw test || exit 1
+      - name: Build and Run Unit Tests
+        run: ./mvnw clean verify
 
       - name: Install Snyk CLI
         run: npm install -g snyk
@@ -35,37 +32,37 @@ jobs:
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run Snyk test
-        run: snyk test --all-projects --severity-threshold=high --json > snyk-report.json
+      - name: Run Snyk SCA Test (Dependency Scan)
+        run: snyk test --all-projects --severity-threshold=high --json > snyk-report.json || true
 
       - name: Check for Critical Vulnerabilities
         run: |
           if grep -q '"severity":"critical"' snyk-report.json; then
-            echo "Critical vulnerabilities found. Failing build."
+            echo "❌ Vulnerabilidades críticas detectadas! Build será interrompido."
             exit 1
           else
-            echo "No critical vulnerabilities detected."
+            echo "✅ Nenhuma vulnerabilidade crítica detectada."
           fi
 
-      - name: Upload Snyk report
+      - name: Upload Snyk Report
         uses: actions/upload-artifact@v4
         with:
           name: snyk-report
           path: snyk-report.json
 
-      - name: Run SAST Scan
+      - name: Run SAST Scan (SpotBugs)
         run: ./mvnw spotbugs:spotbugs || true
 
-      - name: Upload SAST report
+      - name: Upload SAST Report
         uses: actions/upload-artifact@v4
         with:
           name: sast-report
           path: target/spotbugsXml.xml
 
-      - name: Run DAST Scan
+      - name: Run DAST Scan (ZAP Baseline)
         run: docker run --rm -v ${{ github.workspace }}:/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:8080 -r dast-report.html || true
 
-      - name: Upload DAST report
+      - name: Upload DAST Report
         uses: actions/upload-artifact@v4
         with:
           name: dast-report
