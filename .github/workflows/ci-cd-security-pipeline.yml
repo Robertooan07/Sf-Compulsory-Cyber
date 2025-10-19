@@ -26,6 +26,9 @@ jobs:
       - name: Build with Maven
         run: ./mvnw clean compile
 
+      - name: Run Unit and Security Tests
+        run: ./mvnw test || exit 1
+
       - name: Install Snyk CLI
         run: npm install -g snyk
 
@@ -33,7 +36,16 @@ jobs:
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Run Snyk test
-        run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json || true
+        run: snyk test --all-projects --severity-threshold=high --json > snyk-report.json
+
+      - name: Check for Critical Vulnerabilities
+        run: |
+          if grep -q '"severity":"critical"' snyk-report.json; then
+            echo "Critical vulnerabilities found. Failing build."
+            exit 1
+          else
+            echo "No critical vulnerabilities detected."
+          fi
 
       - name: Upload Snyk report
         uses: actions/upload-artifact@v4
@@ -41,17 +53,8 @@ jobs:
           name: snyk-report
           path: snyk-report.json
 
-      - name: Run DAST Scan
-        run: docker run --rm -v ${{ github.workspace }}:/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:8080 -r dast-report.html
-
-      - name: Upload DAST report
-        uses: actions/upload-artifact@v4
-        with:
-          name: dast-report
-          path: dast-report.html
-
       - name: Run SAST Scan
-        run: ./mvnw spotbugs:spotbugs
+        run: ./mvnw spotbugs:spotbugs || true
 
       - name: Upload SAST report
         uses: actions/upload-artifact@v4
@@ -59,3 +62,11 @@ jobs:
           name: sast-report
           path: target/spotbugsXml.xml
 
+      - name: Run DAST Scan
+        run: docker run --rm -v ${{ github.workspace }}:/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:8080 -r dast-report.html || true
+
+      - name: Upload DAST report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-report
+          path: dast-report.html
