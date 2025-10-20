@@ -1,49 +1,45 @@
 package br.com.fiap.api.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import br.com.fiap.api.config.JwtUtils;
 import br.com.fiap.api.dto.LoginRequest;
 import br.com.fiap.api.dto.ResetPasswordRequest;
 import br.com.fiap.api.service.UserService;
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+    private final JwtUtils jwtUtils;
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest loginUserRequest) {
-        boolean autenticated = userService.autenticateUser(
-            loginUserRequest.getUsername(), loginUserRequest.getPassword());
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        boolean authenticated = userService.autenticateUser(
+                loginRequest.getUsername(), loginRequest.getPassword());
 
-        if (autenticated) {
-            return ResponseEntity.ok("Login succeeded");
-        } else {
-            return ResponseEntity.status(401).body("Not authorized. Invalid credentials.");
+        if (!authenticated) {
+            return ResponseEntity.status(401).body("Usuário ou senha inválidos");
         }
+
+        String token = jwtUtils.generateToken(loginRequest.getUsername());
+        return ResponseEntity.ok(token);
     }
-    
+
     @PatchMapping("/{username}/password")
     public ResponseEntity<String> resetPassword(
             @PathVariable String username,
             @RequestBody ResetPasswordRequest request) {
 
-        boolean updatedPassword = userService.resetPassword(username, request);
-
-        if (updatedPassword) {
-            return ResponseEntity.ok("Password updated successfully.");
+        boolean updated = userService.resetPassword(username, request);
+        if (updated) {
+            return ResponseEntity.ok("Senha atualizada com sucesso");
         } else {
-            return ResponseEntity.status(401).body("Not authorized to perform this action.");
+            return ResponseEntity.status(401).body("Não autorizado");
         }
     }
 }
-
-
