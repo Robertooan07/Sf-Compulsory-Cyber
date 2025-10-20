@@ -15,9 +15,6 @@ import br.com.fiap.api.dto.UserUpdateDTO;
 import br.com.fiap.api.log.LogSummaryService;
 import br.com.fiap.api.model.User;
 import br.com.fiap.api.repository.UserRepository;
-import br.com.fiap.api.vo.EmailVO;
-import br.com.fiap.api.vo.PasswordVO;
-import br.com.fiap.api.vo.UsernameVO;
 import jakarta.validation.Valid;
 
 @Service
@@ -43,6 +40,8 @@ public class UserService {
     }
 
     public User createUser(@Valid UserCreateDTO dto) {
+        dto.validate(); // validação antes de criar
+
         User user = new User();
         user.setClientName(dto.getClientName());
         user.setEmail(dto.getEmail() != null ? dto.getEmail().getValue() : null);
@@ -58,6 +57,8 @@ public class UserService {
     }
 
     public User updateUser(Long id, @Valid UserUpdateDTO dto) {
+        dto.validate(); // validação antes de atualizar
+
         return userRepository.findById(id).map(user -> {
             if (dto.getClientName() != null) user.setClientName(dto.getClientName());
             if (dto.getEmail() != null) user.setEmail(dto.getEmail().getValue());
