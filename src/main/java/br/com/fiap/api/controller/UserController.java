@@ -1,25 +1,22 @@
 package br.com.fiap.api.controller;
 
-import java.util.List;
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import br.com.fiap.api.dto.UserCreateDTO;
 import br.com.fiap.api.dto.UserUpdateDTO;
 import br.com.fiap.api.model.User;
 import br.com.fiap.api.service.UserService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     @GetMapping
     public List<User> listAllUsers() {
@@ -27,10 +24,13 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> searchUserForId(@PathVariable Long id) {
-        return userService.searchForId(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> searchUserForId(@PathVariable Long id) {
+        try {
+            User user = userService.searchForId(id);
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado");
+        }
     }
 
     @PostMapping
@@ -48,19 +48,14 @@ public class UserController {
         try {
             User updatedUser = userService.updateUser(id, dto);
             return ResponseEntity.ok(updatedUser);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado");
         }
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateUserField(@PathVariable Long id, @RequestBody UserUpdateDTO dto) {
-        try {
-            User updatedUser = userService.updateUser(id, dto);
-            return ResponseEntity.ok(updatedUser);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+        return updateUser(id, dto);
     }
 
     @DeleteMapping("/{id}")
@@ -68,8 +63,8 @@ public class UserController {
         try {
             userService.delete(id);
             return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado");
         }
     }
 }

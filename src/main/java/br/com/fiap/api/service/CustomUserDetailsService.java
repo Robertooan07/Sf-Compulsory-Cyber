@@ -1,32 +1,28 @@
 package br.com.fiap.api.service;
 
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import br.com.fiap.api.config.CustomUserDetails;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.core.userdetails.User;
-
 import org.springframework.stereotype.Service;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-    @Autowired
-    private UserService userService; // só para buscar usuários do banco
+    private final UserService userService;
+
+    public CustomUserDetailsService(UserService userService) {
+        this.userService = userService;
+    }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Optional<br.com.fiap.api.model.User> optionalUser = userService.findByUsername(username);
-
-        br.com.fiap.api.model.User user = optionalUser
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        return User.builder()
-                .username(user.getUsername())
-                .password(user.getPassword())
-                .roles("USER")
-                .build();
+    public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
+        try {
+            // Usa o método correto do UserService
+            return userService.authenticateUser(usernameOrEmail, null); 
+            // Passamos null para a senha porque aqui só queremos o UserDetails
+        } catch (Exception e) {
+            throw new UsernameNotFoundException("Usuário não encontrado: " + usernameOrEmail);
+        }
     }
 }

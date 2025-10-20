@@ -1,108 +1,101 @@
 package br.com.fiap.api.service;
 
-import java.util.List;
-import java.util.Optional;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import br.com.fiap.api.dto.UserCreateDTO;
+import br.com.fiap.api.dto.UserUpdateDTO;
+import br.com.fiap.api.dto.ResetPasswordRequest;
+import br.com.fiap.api.model.User;
+import br.com.fiap.api.repository.UserRepository;
+import br.com.fiap.api.config.CustomUserDetails;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import br.com.fiap.api.dto.ResetPasswordRequest;
-import br.com.fiap.api.dto.UserCreateDTO;
-import br.com.fiap.api.dto.UserUpdateDTO;
-import br.com.fiap.api.log.LogSummaryService;
-import br.com.fiap.api.model.User;
-import br.com.fiap.api.repository.UserRepository;
-import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
-    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
-    @Autowired
-    private LogSummaryService logSummaryService;
+    // ---------- MÉTODOS DE AUTENTICAÇÃO ----------
+    public CustomUserDetails authenticateUser(String usernameOrEmail, String password) {
+        Optional<User> optionalUser = userRepository.findByUsername(usernameOrEmail);
+        if (optionalUser.isEmpty()) {
+            optionalUser = userRepository.findByEmail(usernameOrEmail);
+        }
 
-    // -------------------------- CRUD ---------------------------------
+        User user = optionalUser.orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
+
+        if (password != null && !passwordEncoder.matches(password, user.getPassword())) {
+            throw new BadCredentialsException("Senha inválida");
+        }
+
+        return new CustomUserDetails(user);
+    }
+
+    public void resetPassword(String usernameOrEmail, ResetPasswordRequest request) {
+        Optional<User> optionalUser = userRepository.findByUsername(usernameOrEmail);
+        if (optionalUser.isEmpty()) {
+            optionalUser = userRepository.findByEmail(usernameOrEmail);
+        }
+
+        User user = optionalUser.orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    // ---------- CRUD DE USUÁRIOS ----------
     public List<User> listAll() {
         return userRepository.findAll();
     }
 
-    public Optional<User> searchForId(Long id) {
-        return userRepository.findById(id);
+    public User searchForId(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
     }
 
-    public User createUser(@Valid UserCreateDTO dto) {
-        dto.validate(); // validação antes de criar
+    public User createUser(UserCreateDTO dto) {
+        dto.validate(); // chama validação do DTO
 
-        User user = new User();
-        user.setClientName(dto.getClientName());
-        user.setEmail(dto.getEmail() != null ? dto.getEmail().getValue() : null);
-        user.setBetMaxValue(dto.getBetMaxValue());
-        user.setUsername(dto.getUsername() != null ? dto.getUsername().getValue() : null);
-        user.setPassword(dto.getPassword() != null ? passwordEncoder.encode(dto.getPassword().getValue()) : null);
-        user.setUserPixKey(dto.getUserPixKey());
-
-        log.info("Creating user: {}", user.getUsername());
-        logSummaryService.addLog("INFO", "Creating user: " + user.getUsername());
+        User user = User.builder()
+                .clientName(dto.getClientName())
+                .username(dto.getUsername().getValue())
+                .email(dto.getEmail().getValue())
+                .password(passwordEncoder.encode(dto.getPassword().getValue()))
+                .userPixKey(dto.getUserPixKey())
+                .betMaxValue(dto.getBetMaxValue())
+                .role("USER") // ou "ADMIN", se for o caso
+                .build();
 
         return userRepository.save(user);
     }
 
-    public User updateUser(Long id, @Valid UserUpdateDTO dto) {
-        dto.validate(); // validação antes de atualizar
+    public User updateUser(Long id, UserUpdateDTO dto) {
+        dto.validate(); // chama validação do DTO
 
-        return userRepository.findById(id).map(user -> {
-            if (dto.getClientName() != null) user.setClientName(dto.getClientName());
-            if (dto.getEmail() != null) user.setEmail(dto.getEmail().getValue());
-            if (dto.getBetMaxValue() != null) user.setBetMaxValue(dto.getBetMaxValue());
-            if (dto.getUserPixKey() != null) user.setUserPixKey(dto.getUserPixKey());
+        User user = searchForId(id);
 
-            log.info("Updating user: {}", user.getUsername());
-            logSummaryService.addLog("INFO", "Updating user: " + user.getUsername());
+        if (dto.getClientName() != null) user.setClientName(dto.getClientName());
+        if (dto.getEmail() != null) user.setEmail(dto.getEmail().getValue());
+        if (dto.getUserPixKey() != null) user.setUserPixKey(dto.getUserPixKey());
+        if (dto.getBetMaxValue() != null) user.setBetMaxValue(dto.getBetMaxValue());
 
-            return userRepository.save(user);
-        }).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository.save(user);
     }
 
     public void delete(Long id) {
-        userRepository.deleteById(id);
-    }
-
-    // ------------------------ SECURITY -----------------------------------------------
-    public boolean autenticateUser(String typedUsername, String typedPassword) {
-        User user = userRepository.findByUsername(typedUsername)
-                .orElseThrow(() -> new RuntimeException("User not found."));
-        return passwordEncoder.matches(typedPassword, user.getPassword());
-    }
-
-    public boolean resetPassword(String username, ResetPasswordRequest request) {
-        Optional<User> usuarioOpt = userRepository.findByUsername(username);
-
-        if (usuarioOpt.isEmpty()) return false;
-
-        User user = usuarioOpt.get();
-
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            return false;
+        if (!userRepository.existsById(id)) {
+            throw new EntityNotFoundException("Usuário não encontrado");
         }
-
-        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
-        user.setPassword(newPasswordHash);
-        userRepository.save(user);
-
-        return true;
-    }
-
-    // ------------------- NOVO MÉTODO PARA SPRING SECURITY ----------------------------
-    public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+        userRepository.deleteById(id);
     }
 }

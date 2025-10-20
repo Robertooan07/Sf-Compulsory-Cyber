@@ -26,14 +26,26 @@ jobs:
       - name: Build with Maven
         run: ./mvnw clean compile
 
+      # ---------------------------
+      # Rodar aplicação para DAST
+      # ---------------------------
+      - name: Run application in background
+        run: nohup ./mvnw spring-boot:run &
+
+      - name: Wait for application startup
+        run: sleep 20
+
+      # ---------------------------
+      # SCA: Dependências (Snyk)
+      # ---------------------------
       - name: Install Snyk CLI
         run: npm install -g snyk
 
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run Snyk test
-        run: snyk test --all-projects --severity-threshold=low --json > snyk-report.json || true
+      - name: Run Snyk test with Quality Gate
+        run: snyk test --all-projects --severity-threshold=high --json > snyk-report.json || true
 
       - name: Upload Snyk report
         uses: actions/upload-artifact@v4
@@ -41,8 +53,12 @@ jobs:
           name: snyk-report
           path: snyk-report.json
 
+      # ---------------------------
+      # DAST: OWASP ZAP
+      # ---------------------------
       - name: Run DAST Scan
-        run: docker run --rm -v ${{ github.workspace }}:/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:8080 -r dast-report.html
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/zap/wrk/:rw -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:8080 -r dast-report.html
 
       - name: Upload DAST report
         uses: actions/upload-artifact@v4
@@ -50,8 +66,14 @@ jobs:
           name: dast-report
           path: dast-report.html
 
+      # ---------------------------
+      # SAST: SpotBugs
+      # ---------------------------
       - name: Run SAST Scan
         run: ./mvnw spotbugs:spotbugs
+
+      - name: Run SpotBugs Quality Gate
+        run: ./mvnw spotbugs:check
 
       - name: Upload SAST report
         uses: actions/upload-artifact@v4
@@ -59,3 +81,8 @@ jobs:
           name: sast-report
           path: target/spotbugsXml.xml
 
+      # ---------------------------
+      # Encerrar aplicação
+      # ---------------------------
+      - name: Stop application
+        run: pkill -f 'java'
