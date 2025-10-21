@@ -26,6 +26,7 @@ public class UserCreateDTO {
 
     private String role;
 
+    // ✅ Validação mínima de dados (Privacy by Design)
     public void validate() {
         if (clientName != null && !clientName.matches("^[a-zA-Z\\s]{3,50}$")) {
             throw new IllegalArgumentException("Nome do cliente inválido");

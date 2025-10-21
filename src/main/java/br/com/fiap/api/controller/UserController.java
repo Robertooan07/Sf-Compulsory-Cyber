@@ -67,4 +67,22 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado");
         }
     }
+
+    // ✅ Endpoints para portabilidade e exclusão automatizados (LGPD)
+    @DeleteMapping("/lgpd/{username}")
+    public ResponseEntity<String> deleteUserLGPD(@PathVariable String username) {
+        userService.deleteByUsername(username);
+        return ResponseEntity.ok("Usuário removido conforme LGPD");
+    }
+
+    @GetMapping("/lgpd/{username}/export")
+    public ResponseEntity<UserCreateDTO> exportUserLGPD(@PathVariable String username) {
+        User user = userService.findByUsername(username);
+        UserCreateDTO dto = new UserCreateDTO();
+        dto.setClientName(user.getClientName());
+        dto.setEmail(user.getEmail() != null ? user.getEmail() : null);
+        dto.setUsername(user.getUsername() != null ? user.getUsername() : null);
+        dto.setBetMaxValue(user.getBetMaxValue());
+        return ResponseEntity.ok(dto);
+    }
 }

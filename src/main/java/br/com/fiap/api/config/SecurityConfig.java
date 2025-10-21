@@ -18,21 +18,21 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Configura as regras de segurança da aplicação
-@Bean
-public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http
-        .csrf(csrf -> csrf.disable()) // Desativa CSRF
-        .authorizeHttpRequests(auth -> auth
-            .anyRequest().permitAll() // Permite todas as requisições
-        );
+    // Configura as regras de segurança
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable()) // Desativa CSRF
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/h2-console/**").permitAll() // acesso livre ao H2
+                .anyRequest().permitAll() // todas requisições permitidas para teste
+            );
 
-    // Permite abrir o console do H2 sem problema
-    http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+        // Permite abrir o console do H2 sem problema
+        http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
-    return http.build();
-}
-
+        return http.build();
+    }
 
     // Necessário para autenticação manual, se for usado futuramente
     @Bean
