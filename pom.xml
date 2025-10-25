@@ -16,7 +16,7 @@
     <artifactId>api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>SF-Compulsory</name>
-    <description>Projeto Spring Boot - SF-Compulsory (LGPD & Security CI/CD)</description>
+    <description>Projeto Spring Boot - SF-Compulsory (LGPD &amp; Security CI/CD)</description>
 
     <properties>
         <java.version>17</java.version>
@@ -104,7 +104,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.11.5</version>
+            <version>0.13.0</version>
             <scope>runtime</scope>
         </dependency>
 
